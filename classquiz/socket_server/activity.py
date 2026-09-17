@@ -30,6 +30,7 @@ from classquiz.socket_server.activity_models import (
     SetActivityPhaseData,
     StartDeliberationQuestionData,
     SubmitActivityResponseData,
+    facilitation_mode_for_player_count,
 )
 from classquiz.socket_server.models import ReturnQuestion
 from classquiz.socket_server.session import get_session
@@ -212,12 +213,6 @@ async def _player_count(game_pin: str) -> int:
     return await redis.scard(f"game_session:{game_pin}:players")
 
 
-def _is_n3_mode(player_count: int) -> bool:
-    """Use the microgroup facilitation mode when one to three students are present."""
-
-    return 1 <= player_count <= 3
-
-
 async def _emit_progress(
     sio: AsyncServer,
     game_pin: str,
@@ -232,7 +227,7 @@ async def _emit_progress(
             "phase": state.phase.value,
             "response_count": _phase_response_count(responses, state.phase),
             "player_count": player_count,
-            "n3_mode": _is_n3_mode(player_count),
+            "facilitation_mode": facilitation_mode_for_player_count(player_count).value,
         },
         room=f"admin:{game_pin}",
     )
@@ -455,7 +450,7 @@ def register_activity_handlers(sio: AsyncServer) -> None:
                     _phase_response_count(responses, state.phase) if state is not None else 0
                 ),
                 "player_count": player_count,
-                "n3_mode": _is_n3_mode(player_count),
+                "facilitation_mode": facilitation_mode_for_player_count(player_count).value,
             },
             room=sid,
         )
@@ -487,7 +482,7 @@ def register_activity_handlers(sio: AsyncServer) -> None:
             {
                 "question_index": payload.question_index,
                 "player_count": player_count,
-                "n3_mode": _is_n3_mode(player_count),
+                "facilitation_mode": facilitation_mode_for_player_count(player_count).value,
                 **build_activity_results(responses),
             },
             room=sid,
