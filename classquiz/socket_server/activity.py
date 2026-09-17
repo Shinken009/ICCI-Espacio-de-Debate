@@ -212,6 +212,12 @@ async def _player_count(game_pin: str) -> int:
     return await redis.scard(f"game_session:{game_pin}:players")
 
 
+def _is_n3_mode(player_count: int) -> bool:
+    """Use the microgroup facilitation mode when one to three students are present."""
+
+    return 1 <= player_count <= 3
+
+
 async def _emit_progress(
     sio: AsyncServer,
     game_pin: str,
@@ -226,7 +232,7 @@ async def _emit_progress(
             "phase": state.phase.value,
             "response_count": _phase_response_count(responses, state.phase),
             "player_count": player_count,
-            "n3_mode": player_count == 3,
+            "n3_mode": _is_n3_mode(player_count),
         },
         room=f"admin:{game_pin}",
     )
@@ -449,7 +455,7 @@ def register_activity_handlers(sio: AsyncServer) -> None:
                     _phase_response_count(responses, state.phase) if state is not None else 0
                 ),
                 "player_count": player_count,
-                "n3_mode": player_count == 3,
+                "n3_mode": _is_n3_mode(player_count),
             },
             room=sid,
         )
@@ -481,7 +487,7 @@ def register_activity_handlers(sio: AsyncServer) -> None:
             {
                 "question_index": payload.question_index,
                 "player_count": player_count,
-                "n3_mode": player_count == 3,
+                "n3_mode": _is_n3_mode(player_count),
                 **build_activity_results(responses),
             },
             room=sid,
