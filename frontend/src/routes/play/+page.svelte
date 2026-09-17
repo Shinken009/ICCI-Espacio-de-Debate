@@ -11,6 +11,8 @@ SPDX-License-Identifier: MPL-2.0
 	import type { Answer, Question as QuestionType } from '$lib/quiz_types';
 	import ShowTitle from '$lib/play/title.svelte';
 	import Question from '$lib/play/question.svelte';
+	import StudentActivity from '$lib/play/activity/student.svelte';
+	import { PEER_DELIBERATION } from '$lib/play/activity/types';
 	import { navbarVisible } from '$lib/stores.svelte.ts';
 	import ShowEndScreen from '$lib/play/admin/final_results.svelte';
 	import KahootResults from '$lib/play/results_kahoot.svelte';
@@ -53,7 +55,7 @@ SPDX-License-Identifier: MPL-2.0
 		started: false
 	});
 
-	let question: Question = $state();
+	let question: QuestionType = $state();
 
 	let preventReload = true;
 
@@ -183,7 +185,11 @@ SPDX-License-Identifier: MPL-2.0
 		{:else if gameMeta.started && gameData !== undefined && question_index !== '' && answer_results === undefined}
 			{#key unique}
 				<div class="text-black dark:text-black">
-					<Question bind:game_mode bind:question {question_index} {solution} />
+					{#if question?.interaction_mode === PEER_DELIBERATION}
+						<StudentActivity {question} {question_index} />
+					{:else}
+						<Question bind:game_mode bind:question {question_index} {solution} />
+					{/if}
 				</div>
 			{/key}
 		{:else if gameMeta.started && answer_results !== undefined}
