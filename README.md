@@ -1,126 +1,156 @@
 <!--
 SPDX-FileCopyrightText: 2023 Marlon W (Mawoka)
+SPDX-FileCopyrightText: 2026 Roberto Pizarro Díaz
 
 SPDX-License-Identifier: MPL-2.0
 -->
 
-<a href="https://github.com/mawoka-myblock/ClassQuiz/stargazers"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/mawoka-myblock/classquiz?style=for-the-badge"></a>
-<a href="https://github.com/mawoka-myblock/ClassQuiz/graphs/contributors"><img alt="GitHub contributors" src="https://img.shields.io/github/contributors/mawoka-myblock/classquiz?color=green&style=for-the-badge"></a>
-<a href="https://github.com/mawoka-myblock/ClassQuiz/network/members"><img alt="GitHub forks" src="https://img.shields.io/github/forks/mawoka-myblock/classquiz?style=for-the-badge"></a>
-<a href="https://github.com/mawoka-myblock/ClassQuiz/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc"><img alt="GitHub issues" src="https://img.shields.io/github/issues/mawoka-myblock/classquiz?style=for-the-badge"></a>
-<a href="https://github.com/mawoka-myblock/ClassQuiz/blob/master/LICENSE"><img alt="GitHub" src="https://img.shields.io/github/license/mawoka-myblock/classquiz?style=for-the-badge"></a>
-<img alt="GitHub code size in bytes" src="https://img.shields.io/github/languages/code-size/mawoka-myblock/classquiz?style=for-the-badge">
-[![DeepSource](https://deepsource.io/gh/mawoka-myblock/ClassQuiz.svg/?label=active+issues&show_trend=true&token=5-2Na9HN-2CXcGkHjah_Rk09&style=for-the-badge)](https://deepsource.io/gh/mawoka-myblock/ClassQuiz/)
-<img alt="Snky badge" src="https://img.shields.io/badge/Snyk-Check-success?style=for-the-badge">
-[![codecov](https://codecov.io/gh/mawoka-myblock/ClassQuiz/branch/master/graph/badge.svg?token=7CHK2A0AMO)](https://codecov.io/gh/mawoka-myblock/ClassQuiz)
+# ICCI – Espacio de debate
 
-<div align='center'>
-    <h2 align='center'>ClassQuiz</h2>
-    <img src='logo.png' alt='ClassQuiz Logo' height='100px' width='100px'>
-    <p align='center'>
-        The open-source quiz-platform!
-        <br/>
-        <a href='https://classquiz.de/'><strong>Visit the website »</strong></a>
-        <br />
-        <br />
-        <a href='https://classquiz.de/docs'>Docs</a>
-        ·
-        <a href='https://classquiz.de/account/register'>Register</a>
-        ·
-        <a href='https://classquiz.de/docs/self-host'>Self-Hosting</a>
-        ·
-        <a href='https://matrix.to/#/#classquiz:matrix.org'>Matrix Space</a>
-    </p>
-</div>
+**Plataforma experimental de aprendizaje activo para estructurar procesos de respuesta individual, argumentación, deliberación entre pares y reconsideración de posturas en educación superior.**
 
+> Estado: **piloto en desarrollo (`v0.1`)**. Este repositorio es un fork de [ClassQuiz](https://github.com/mawoka-myblock/ClassQuiz) y conserva su base tecnológica y obligaciones de licencia MPL-2.0.
 
-## About ClassQuiz
+## Propósito
 
-ClassQuiz is a quiz app to learn interactively for students,
-but open-source which is very important if it is a product for educational
-purposes.
-You can create quizzes and play them remotely with other people.
-It is mainly made for teachers who create a
-quiz, so students can compete with their knowledge against each other.
+ICCI – Espacio de debate explora cómo transformar una pregunta de aula en un proceso deliberativo observable y reproducible:
 
-## Try it
+**Piensa → responde → explicita tu razonamiento → conversa → reconsidera → reflexiona.**
 
-There is a hosted version at [classquiz.de](https://classquiz.de?utm_medium=Github&utm_source=Readme). The server is
-located in Karlsruhe, Germany and hosted by [netcup](https://mawoka.eu/redir?token=2), so expect some latency depending
-on your location.
+El objetivo inicial no es construir otro sistema de trivia ni premiar el cambio de respuesta. El foco está en hacer visible el proceso de razonamiento, discusión y metacognición, especialmente en actividades donde puede no existir una única respuesta correcta.
 
-## Help/Community
+El primer piloto está orientado a docencia universitaria en informática y contempla dos escenarios:
 
-Join our [Matrix Space](https://matrix.to/#/#classquiz:matrix.org) using [element](https://app.element.io)!
+- cursos de aproximadamente **20–35 estudiantes**, con deliberación entre pares o pequeños grupos;
+- seminarios pequeños, incluido un escenario de **3 estudiantes**, con conversación guiada y visualizaciones adecuadas a muestras reducidas.
 
-## Donating
+Este proyecto es una iniciativa experimental de desarrollo y docencia. **No representa un producto institucional oficial de una universidad.**
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/K3K3CK3ES)
+## Primer flujo de aprendizaje
 
-<a href="https://liberapay.com/Mawoka/donate"><img src="https://img.shields.io/liberapay/goal/Mawoka.svg?logo=liberapay"></a>
+La versión inicial implementará un flujo configurable de Peer Instruction / deliberación:
 
-## Self-Host
+1. pregunta de entrenamiento para aprender la dinámica y la interfaz;
+2. respuesta individual inicial (R1);
+3. nivel de convicción;
+4. justificación breve;
+5. deliberación entre pares;
+6. segunda respuesta individual (R2);
+7. reflexión/metacognición;
+8. analítica neutral de transiciones y argumentos.
 
-Please see https://classquiz.de/docs/self-host
+La plataforma no interpretará automáticamente un cambio de alternativa como éxito. La analítica observará, entre otros elementos:
 
-## Development
+- mantenimiento o cambio de postura;
+- matriz completa de transiciones R1 → R2;
+- variación del nivel de convicción;
+- convergencia o divergencia de respuestas;
+- argumentos destacados;
+- reflexión posterior a la discusión.
 
-See https://classquiz.de/docs/develop
+## Arquitectura
 
-## Translation
+ICCI se construye sobre la arquitectura real de ClassQuiz en lugar de reimplementar su infraestructura de sesiones y comunicación en tiempo real.
 
-ClassQuiz uses [hosted Weblate](https://hosted.weblate.org/engage/classquiz/)
+### Backend
 
+- FastAPI
+- ormar
+- python-socketio
+- PostgreSQL
+- Redis
 
-<a href="https://hosted.weblate.org/engage/classquiz/">
-<img src="https://hosted.weblate.org/widgets/classquiz/-/frontend/multi-auto.svg" alt="Übersetzungsstatus" />
-</a>
+### Frontend
 
-## Docs
+- SvelteKit
+- Tailwind CSS
 
-The docs are online at https://classquiz.de/docs
+El prototipo visual previo en React/Vite se considera una **referencia UX y funcional**, no la base de producción del fork.
 
-### Things to know about the structure
+## Principio de extensibilidad
 
-Since this repo is a monorepo, the frontend is located in
-the [`frontend/`](https://github.com/mawoka-myblock/ClassQuiz/tree/master/frontend)-directory.
-The backend-project (Pipfile) is in the root, but all the code is located in
-the [`classquiz/`](https://github.com/mawoka-myblock/ClassQuiz/tree/master/frontend)-folder.
+El objetivo es que Peer Instruction sea la primera metodología, no la arquitectura completa. El modelo futuro se organizará alrededor de entidades configurables como:
 
-#### Tech-Stack
+```text
+Activity
+├── Question
+├── Phase
+├── Response
+├── Group
+├── Reflection
+└── Analytics
+```
 
-##### Backend
+Esto permitirá explorar posteriormente metodologías como:
 
-The backend is made with [FastAPI](https://fastapi.tiangolo.com/) (web-framework)
-, [ormar](https://github.com/collerek/ormar/) (ORM)
-, [python-socketio](https://python-socketio.readthedocs.io/en/latest/) (realtime-communication between server and
-client)
+- Think–Pair–Share;
+- debate estructurado;
+- Team-Based Learning;
+- Jigsaw;
+- ranking o priorización colectiva;
+- evaluación entre pares;
+- dilemas éticos;
+- construcción de consenso;
+- retrospectivas y reflexión grupal.
 
-##### Frontend
+## Alcance de `v0.1 – Classroom Pilot`
 
-The frontend is made with [SvelteKit](https://kit.svelte.dev/) (web-framework)
-and [TailwindCSS](https://tailwindcss.com/) (Css-Framework).
+El primer vertical slice debe demostrar, de extremo a extremo:
 
-##### External Dependencies
+```text
+Profesor abre sesión
+        ↓
+Estudiantes ingresan con PIN
+        ↓
+Pregunta de entrenamiento
+        ↓
+Pregunta sustantiva
+        ↓
+R1 + convicción + justificación
+        ↓
+Deliberación
+        ↓
+R2 + reflexión
+        ↓
+Analítica docente
+```
 
-Selfhostable:
+No forman parte de `v0.1`: integración LMS, calificaciones, IA generativa, análisis automático de argumentos, microservicios adicionales ni cuentas institucionales.
 
-- [Meilisearch](https://www.meilisearch.com/) (Search-Server)
-- [Caddy](https://caddyserver.com/) (Reverse Proxy)
-- [Postgres](https://www.postgresql.org/) (Database)
-- [Redis](https://redis.io/) (Cache)
+## Documentación
 
-Closed-Source 3rd parties:
+- [`docs/BASELINE.md`](docs/BASELINE.md): procedencia del fork y baseline técnico.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): principios de arquitectura y extensibilidad.
+- [`docs/PEDAGOGY.md`](docs/PEDAGOGY.md): modelo pedagógico y reglas de analítica responsable.
+- [`docs/PILOT.md`](docs/PILOT.md): alcance y criterios de aceptación del primer piloto.
 
-- [Mapbox](https://www.mapbox.com/) (maps)
-- [hCaptcha](https://www.hcaptcha.com/) (captcha)
+## Desarrollo
 
----
+La rama `master` se mantiene inicialmente como referencia limpia del upstream. El desarrollo del piloto parte desde:
 
-## License Note
+```text
+feat/peer-instruction
+```
 
-This repository is licensed under the [Mozilla Public License 2.0](https://www.mozilla.org/en-US/MPL/2.0/);
+Baseline inicial del fork:
 
-please review the license to understand your rights and obligations.[^1]
+```text
+711bdde7a7dcd2d217cfc75dbbbb2592a78582d3
+```
 
-[^1]: I added this note, since people are stealing my software and changing it without providing the source-code.
+Antes de integrar código funcional se validará el build del upstream, sus dependencias y el flujo actual de sesiones.
+
+## Upstream y atribución
+
+ICCI – Espacio de debate deriva de **ClassQuiz**, creado y mantenido por Marlon W. / `mawoka-myblock` y sus colaboradores:
+
+- Upstream: https://github.com/mawoka-myblock/ClassQuiz
+- Proyecto original: https://classquiz.de
+
+Las modificaciones propias se documentarán de manera explícita y se mantendrá la trazabilidad con el proyecto original.
+
+## Licencia
+
+ClassQuiz y los archivos derivados cubiertos por esta licencia se distribuyen bajo **Mozilla Public License 2.0 (MPL-2.0)**. Consulta [`LICENSE`](LICENSE) para los términos aplicables.
+
+Las contribuciones nuevas deberán respetar las obligaciones de atribución y publicación de código fuente correspondientes a los archivos cubiertos por MPL-2.0.
