@@ -18,16 +18,19 @@ from pydantic import ValidationError
 from socketio import AsyncServer
 
 from classquiz.config import redis
-from classquiz.db.models import PlayGame, QuizQuestionType
+from classquiz.db.models import PlayGame, QuizQuestionType, VotingQuizAnswer
 from classquiz.socket_server.activity_models import (
     ActivityPhase,
     ActivityResponse,
     ActivityState,
     GetActivityResultsData,
     GetActivityStateData,
+    InteractionMode,
     SetActivityPhaseData,
+    StartDeliberationQuestionData,
     SubmitActivityResponseData,
 )
+from classquiz.socket_server.models import ReturnQuestion
 from classquiz.socket_server.session import get_session
 
 ACTIVITY_TTL_SECONDS = 7200
@@ -67,15 +70,30 @@ async def _save_state(game_pin: str, state: ActivityState) -> None:
     )
 
 
-async def _validate_voting_question(game_pin: str, question_index: int) -> PlayGame:
+async def _validate_voting_question(
+    game_pin: str,
+    question_index: int,
+    *,
+    require_active: bool = True,
+) -> PlayGame:
     game_data = await PlayGame.get_from_redis(game_pin)
     if question_index >= len(game_data.questions):
         raise ValueError("question_not_found")
-    if game_data.current_question != question_index:
+    if require_active and game_data.current_question != question_index:
         raise ValueError("question_not_active")
     if game_data.questions[question_index].type != QuizQuestionType.VOTING:
         raise ValueError("activity_requires_voting_question")
     return game_data
+
+
+def _public_deliberation_question(game_data: PlayGame, question_index: int) -> dict:
+    temp_return = game_data.model_dump(include={"questions"})["questions"][question_index]
+    for i in range(len(temp_return["answers"])):
+        temp_return["answers"][i] = VotingQuizAnswer(**temp_return["answers"][i])
+    temp_return["type"] = game_data.questions[question_index].type
+    question = ReturnQuestion(**temp_return).model_dump()
+    question["interaction_mode"] = InteractionMode.PEER_DELIBERATION.value
+    return question
 
 
 def _group_responses(
@@ -174,6 +192,69 @@ async def _emit_error(sio: AsyncServer, sid: str, code: str) -> None:
 
 def register_activity_handlers(sio: AsyncServer) -> None:
     """Register ICCI activity events on the existing ClassQuiz Socket.IO server."""
+
+    @sio.event
+    async def start_deliberation_question(sid: str, data: dict):
+        try:
+            payload = StartDeliberationQuestionData(**data)
+        except ValidationError:
+            await _emit_error(sio, sid, "invalid_payload")
+            return
+
+        session = await get_session(sid, sio)
+        if not session.get("admin"):
+            await _emit_error(sio, sid, "admin_required")
+            return
+
+        game_pin = session["game_pin"]
+        try:
+            game_data = await _validate_voting_question(
+                game_pin,
+                payload.question_index,
+                require_active=False,
+            )
+        except ValueError as exc:
+            await _emit_error(sio, sid, str(exc))
+            return
+
+        if not game_data.started:
+            await _emit_error(sio, sid, "game_not_started")
+            return
+
+        await redis.delete(_state_key(game_pin, payload.question_index))
+        await redis.delete(_responses_key(game_pin, payload.question_index))
+        await redis.delete(f"game_session:{game_pin}:{payload.question_index}")
+
+        game_data.current_question = payload.question_index
+        game_data.question_show = True
+        await game_data.save(game_pin)
+        await redis.set(
+            f"game:{game_pin}:current_time",
+            datetime.now().isoformat(),
+            ex=ACTIVITY_TTL_SECONDS,
+        )
+
+        now = datetime.now()
+        state = ActivityState(
+            question_index=payload.question_index,
+            phase=ActivityPhase.INITIAL_RESPONSE,
+            phase_started_at=now,
+        )
+        await _save_state(game_pin, state)
+
+        await sio.emit(
+            "set_question_number",
+            {
+                "question_index": payload.question_index,
+                "question": _public_deliberation_question(game_data, payload.question_index),
+            },
+            room=game_pin,
+        )
+        await sio.emit(
+            "activity_phase_changed",
+            state.model_dump(mode="json"),
+            room=game_pin,
+        )
 
     @sio.event
     async def set_activity_phase(sid: str, data: dict):
