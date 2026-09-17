@@ -4,6 +4,12 @@
 
 export const PEER_DELIBERATION = 'PEER_DELIBERATION' as const;
 
+export enum FacilitationMode {
+	WAITING = 'WAITING',
+	MICROGROUP = 'MICROGROUP',
+	CLASSROOM = 'CLASSROOM'
+}
+
 export enum ActivityPhase {
 	INITIAL_RESPONSE = 'INITIAL_RESPONSE',
 	DISCUSSION = 'DISCUSSION',
@@ -33,7 +39,7 @@ export interface ActivityStateEvent {
 	my_responses?: Partial<Record<ActivityPhase, ActivityOwnResponse>>;
 	response_count: number;
 	player_count: number;
-	n3_mode: boolean;
+	facilitation_mode: FacilitationMode;
 }
 
 export interface ActivityProgress {
@@ -41,7 +47,7 @@ export interface ActivityProgress {
 	phase: ActivityPhase;
 	response_count: number;
 	player_count: number;
-	n3_mode: boolean;
+	facilitation_mode: FacilitationMode;
 }
 
 export interface ActivityResults {
@@ -54,5 +60,5 @@ export interface ActivityResults {
 	matched_participants: number;
 	reflection_count: number;
 	player_count: number;
-	n3_mode: boolean;
+	facilitation_mode: FacilitationMode;
 }
