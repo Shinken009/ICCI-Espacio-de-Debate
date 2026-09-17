@@ -31,6 +31,24 @@ class InteractionMode(str, Enum):
     PEER_DELIBERATION = "PEER_DELIBERATION"
 
 
+class FacilitationMode(str, Enum):
+    """Facilitation strategy derived from the live participant count."""
+
+    WAITING = "WAITING"
+    MICROGROUP = "MICROGROUP"
+    CLASSROOM = "CLASSROOM"
+
+
+def facilitation_mode_for_player_count(player_count: int) -> FacilitationMode:
+    """Return the facilitation mode for the current number of participants."""
+
+    if player_count <= 0:
+        return FacilitationMode.WAITING
+    if player_count <= 3:
+        return FacilitationMode.MICROGROUP
+    return FacilitationMode.CLASSROOM
+
+
 class ActivityPhase(str, Enum):
     """Server-authoritative phases for the first deliberation workflow."""
 
