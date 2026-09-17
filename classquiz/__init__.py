@@ -36,9 +36,12 @@ from classquiz.routers import (
     moderation,
 )
 from classquiz.socket_server import sio
+from classquiz.socket_server.activity import register_activity_handlers
 from classquiz.helpers import meilisearch_init
 
 settings = settings()
+register_activity_handlers(sio)
+
 if settings.sentry_dsn:
     sentry_sdk.init(dsn=settings.sentry_dsn, integrations=[RedisIntegration()])
 app = FastAPI(redoc_url="", docs_url="/api/docs")
