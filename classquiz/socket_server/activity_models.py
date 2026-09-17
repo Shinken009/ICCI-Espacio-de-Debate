@@ -50,6 +50,12 @@ class ActivityState(BaseModel):
     phase_deadline: datetime | None = None
 
 
+class StartDeliberationQuestionData(BaseModel):
+    """Admin request to atomically show a VOTING question and open round one."""
+
+    question_index: int = Field(ge=0)
+
+
 class SetActivityPhaseData(BaseModel):
     """Admin request to move an activity to a new phase."""
 
