@@ -10,6 +10,7 @@ SPDX-License-Identifier: MPL-2.0
 	import type { Question, VotingAnswer } from '$lib/quiz_types';
 	import {
 		ActivityPhase,
+		FacilitationMode,
 		type ActivityOwnResponse,
 		type ActivityState,
 		type ActivityStateEvent
@@ -24,7 +25,7 @@ SPDX-License-Identifier: MPL-2.0
 	let state: ActivityState | null = $state(null);
 	let submitted_phases: ActivityPhase[] = $state([]);
 	let my_responses: Partial<Record<ActivityPhase, ActivityOwnResponse>> = $state({});
-	let n3_mode = $state(false);
+	let facilitation_mode = $state(FacilitationMode.WAITING);
 	let choice = $state('');
 	let confidence = $state(3);
 	let justification = $state('');
@@ -34,6 +35,7 @@ SPDX-License-Identifier: MPL-2.0
 
 	const numericQuestionIndex = () => Number(question_index);
 	const isSubmitted = (phase: ActivityPhase) => submitted_phases.includes(phase);
+	const isMicrogroup = $derived(facilitation_mode === FacilitationMode.MICROGROUP);
 
 	const requestState = () => {
 		socket.emit('get_activity_state', { question_index: numericQuestionIndex() });
@@ -52,7 +54,7 @@ SPDX-License-Identifier: MPL-2.0
 			state = data.state;
 			submitted_phases = data.submitted_phases ?? [];
 			my_responses = data.my_responses ?? {};
-			n3_mode = data.n3_mode ?? false;
+			facilitation_mode = data.facilitation_mode ?? FacilitationMode.WAITING;
 		};
 
 		const onPhaseChanged = (data: ActivityState) => {
@@ -135,9 +137,9 @@ SPDX-License-Identifier: MPL-2.0
 			<p class="mr-auto text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
 				ICCI · Espacio de debate
 			</p>
-			{#if n3_mode}
+			{#if isMicrogroup}
 				<span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold dark:bg-slate-800">
-					Modo N=3 · tríada
+					Modo microgrupo
 				</span>
 			{/if}
 		</div>
@@ -165,12 +167,12 @@ SPDX-License-Identifier: MPL-2.0
 				</div>
 			{/if}
 
-			{#if n3_mode}
+			{#if isMicrogroup}
 				<div class="mt-5 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
-					<p class="font-semibold">Protocolo de tríada</p>
+					<p class="font-semibold">Protocolo de microgrupo</p>
 					<ol class="mt-3 list-decimal space-y-2 pl-5 text-sm text-slate-600 dark:text-slate-300">
-						<li>Cada persona expone su razón principal sin interrupciones.</li>
-						<li>Cada persona responde o pregunta sobre al menos un argumento ajeno.</li>
+						<li>Cada participante expone su razón principal sin interrupciones.</li>
+						<li>Cada participante responde o pregunta sobre al menos un argumento ajeno, cuando haya otra persona presente.</li>
 						<li>Antes de R2, identifica qué razones mantienes y cuáles revisarías.</li>
 					</ol>
 				</div>
