@@ -1,5 +1,6 @@
 <!--
 SPDX-FileCopyrightText: 2023 Marlon W (Mawoka)
+SPDX-FileCopyrightText: 2026 Roberto Pizarro Diaz
 
 SPDX-License-Identifier: MPL-2.0
 -->
@@ -25,6 +26,12 @@ SPDX-License-Identifier: MPL-2.0
 		socket_game_controls.show_solutions();
 		game_state.timer_res = '0';
 	};
+
+	const nextQuestionIndex = $derived(game_state.selected_question + 1);
+	const nextQuestionIsVoting = $derived(
+		nextQuestionIndex < game_state.quiz_data.questions.length &&
+			game_state.quiz_data.questions[nextQuestionIndex]?.type === QuizQuestionType.VOTING
+	);
 </script>
 
 <div
@@ -49,13 +56,20 @@ SPDX-License-Identifier: MPL-2.0
 			{#if (game_state.selected_question + 1 !== game_state.quiz_data.questions.length && game_state.question_results !== null) || game_state.selected_question === -1}
 				<button
 					onclick={() => {
-						socket_game_controls.set_question_number(game_state.selected_question + 1);
+						socket_game_controls.set_question_number(nextQuestionIndex);
 					}}
 					class="admin-button"
 					>{$t('admin_page.next_question', {
 						question: game_state.selected_question + 2
 					})}
 				</button>
+				{#if nextQuestionIsVoting}
+					<button
+						onclick={() => socket_game_controls.start_deliberation_question(nextQuestionIndex)}
+						class="admin-button"
+						>Iniciar como debate</button
+					>
+				{/if}
 			{/if}
 			{#if game_state.question_results === null && game_state.selected_question !== -1}
 				{#if game_state.quiz_data.questions[game_state.selected_question].type === QuizQuestionType.SLIDE}
@@ -96,8 +110,8 @@ SPDX-License-Identifier: MPL-2.0
 								game_state.shown_question_now
 							)}
 						class="admin-button"
-						>{$t('admin_page.show_results')}
-					</button>
+						>{$t('admin_page.show_results')}</button
+					>
 				{/if}
 			{/if}
 		{:else if game_state.selected_question !== -1}
@@ -109,12 +123,12 @@ SPDX-License-Identifier: MPL-2.0
 					class="admin-button"
 					>{$t('admin_page.next_question', {
 						question: game_state.selected_question + 2
-					})}
-				</button>
+					})}</button
+				>
 			{:else}
 				<button onclick={show_solutions} class="admin-button"
-					>{$t('admin_page.stop_time_and_solutions')}
-				</button>
+					>{$t('admin_page.stop_time_and_solutions')}</button
+				>
 			{/if}
 		{/if}
 	</div>
