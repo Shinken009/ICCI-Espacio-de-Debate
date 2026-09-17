@@ -12,11 +12,13 @@ from classquiz.socket_server.activity_models import (
     ActivityResponse,
     ActivityRound,
     ActivityState,
+    FacilitationMode,
     SubmitActivityResponseData,
     activity_response_field,
     activity_responses_key,
     activity_round_for_phase,
     activity_state_key,
+    facilitation_mode_for_player_count,
 )
 
 
@@ -26,6 +28,21 @@ def test_round_is_derived_from_phase_without_redundant_state():
     assert activity_round_for_phase(ActivityPhase.DISCUSSION) is None
     assert activity_round_for_phase(ActivityPhase.REFLECTION) is None
     assert activity_round_for_phase(ActivityPhase.RESULTS) is None
+
+
+@pytest.mark.parametrize(
+    ("player_count", "expected"),
+    [
+        (0, FacilitationMode.WAITING),
+        (1, FacilitationMode.MICROGROUP),
+        (2, FacilitationMode.MICROGROUP),
+        (3, FacilitationMode.MICROGROUP),
+        (4, FacilitationMode.CLASSROOM),
+        (30, FacilitationMode.CLASSROOM),
+    ],
+)
+def test_facilitation_mode_adapts_to_participant_count(player_count, expected):
+    assert facilitation_mode_for_player_count(player_count) == expected
 
 
 def test_activity_state_exposes_derived_round():
