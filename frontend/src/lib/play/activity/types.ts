@@ -20,9 +20,20 @@ export interface ActivityState {
 	phase_deadline?: string | null;
 }
 
+export interface ActivityOwnResponse {
+	choice?: string | null;
+	confidence?: number | null;
+	justification?: string | null;
+	reflection?: string | null;
+}
+
 export interface ActivityStateEvent {
 	state: ActivityState | null;
 	submitted_phases: ActivityPhase[];
+	my_responses?: Partial<Record<ActivityPhase, ActivityOwnResponse>>;
+	response_count: number;
+	player_count: number;
+	n3_mode: boolean;
 }
 
 export interface ActivityProgress {
@@ -30,6 +41,7 @@ export interface ActivityProgress {
 	phase: ActivityPhase;
 	response_count: number;
 	player_count: number;
+	n3_mode: boolean;
 }
 
 export interface ActivityResults {
@@ -40,6 +52,7 @@ export interface ActivityResults {
 	stance: { maintained: number; changed: number };
 	confidence_change: { increased: number; decreased: number; unchanged: number };
 	matched_participants: number;
-	justifications: Array<{ username: string; text: string }>;
-	reflections: Array<{ username: string; text: string }>;
+	reflection_count: number;
+	player_count: number;
+	n3_mode: boolean;
 }

@@ -26,6 +26,7 @@ from classquiz.socket_server.activity_models import (
     GetActivityResultsData,
     GetActivityStateData,
     InteractionMode,
+    RESPONSE_PHASES,
     SetActivityPhaseData,
     StartDeliberationQuestionData,
     SubmitActivityResponseData,
@@ -106,7 +107,7 @@ def _group_responses(
 
 
 def build_activity_results(responses: Iterable[ActivityResponse]) -> dict:
-    """Build descriptive, non-evaluative analytics for R1/R2 deliberation."""
+    """Build anonymous, descriptive and non-evaluative R1/R2 analytics."""
 
     grouped = _group_responses(responses)
     initial = grouped.get(ActivityPhase.INITIAL_RESPONSE, {})
@@ -115,7 +116,6 @@ def build_activity_results(responses: Iterable[ActivityResponse]) -> dict:
 
     initial_counts: dict[str, int] = {}
     second_counts: dict[str, int] = {}
-    transitions: dict[str, dict[str, int]] = {}
     confidence_change = {"increased": 0, "decreased": 0, "unchanged": 0}
     maintained = 0
     changed = 0
@@ -128,6 +128,11 @@ def build_activity_results(responses: Iterable[ActivityResponse]) -> dict:
         if response.choice is not None:
             second_counts[response.choice] = second_counts.get(response.choice, 0) + 1
 
+    choices = sorted(set(initial_counts).union(second_counts))
+    transitions: dict[str, dict[str, int]] = {
+        before: {after: 0 for after in choices} for before in choices
+    }
+
     shared_participants = sorted(set(initial).intersection(second))
     for username in shared_participants:
         before = initial[username]
@@ -135,9 +140,12 @@ def build_activity_results(responses: Iterable[ActivityResponse]) -> dict:
         if before.choice is None or after.choice is None:
             continue
 
-        transitions.setdefault(before.choice, {})[after.choice] = (
-            transitions.setdefault(before.choice, {}).get(after.choice, 0) + 1
+        transitions.setdefault(
+            before.choice,
+            {choice: 0 for choice in choices},
         )
+        transitions[before.choice].setdefault(after.choice, 0)
+        transitions[before.choice][after.choice] += 1
 
         if before.choice == after.choice:
             maintained += 1
@@ -159,22 +167,7 @@ def build_activity_results(responses: Iterable[ActivityResponse]) -> dict:
         "stance": {"maintained": maintained, "changed": changed},
         "confidence_change": confidence_change,
         "matched_participants": len(shared_participants),
-        "justifications": [
-            {
-                "username": response.username,
-                "text": response.justification,
-            }
-            for response in initial.values()
-            if response.justification
-        ],
-        "reflections": [
-            {
-                "username": response.username,
-                "text": response.reflection,
-            }
-            for response in reflections.values()
-            if response.reflection
-        ],
+        "reflection_count": len(reflections),
     }
 
 
@@ -184,6 +177,59 @@ async def _read_responses(game_pin: str, question_index: int) -> list[ActivityRe
     for value in raw.values():
         responses.append(ActivityResponse.model_validate_json(value))
     return responses
+
+
+def _phase_response_count(
+    responses: Iterable[ActivityResponse],
+    phase: ActivityPhase,
+) -> int:
+    if phase not in RESPONSE_PHASES:
+        return 0
+    return sum(1 for response in responses if response.phase == phase)
+
+
+def _own_response_snapshot(
+    responses: Iterable[ActivityResponse],
+    username: str | None,
+) -> dict[str, dict]:
+    if not username:
+        return {}
+
+    snapshot: dict[str, dict] = {}
+    for response in responses:
+        if response.username != username:
+            continue
+        snapshot[response.phase.value] = {
+            "choice": response.choice,
+            "confidence": response.confidence,
+            "justification": response.justification,
+            "reflection": response.reflection,
+        }
+    return snapshot
+
+
+async def _player_count(game_pin: str) -> int:
+    return await redis.scard(f"game_session:{game_pin}:players")
+
+
+async def _emit_progress(
+    sio: AsyncServer,
+    game_pin: str,
+    state: ActivityState,
+    responses: Iterable[ActivityResponse],
+) -> None:
+    player_count = await _player_count(game_pin)
+    await sio.emit(
+        "activity_progress",
+        {
+            "question_index": state.question_index,
+            "phase": state.phase.value,
+            "response_count": _phase_response_count(responses, state.phase),
+            "player_count": player_count,
+            "n3_mode": player_count == 3,
+        },
+        room=f"admin:{game_pin}",
+    )
 
 
 async def _emit_error(sio: AsyncServer, sid: str, code: str) -> None:
@@ -255,6 +301,7 @@ def register_activity_handlers(sio: AsyncServer) -> None:
             state.model_dump(mode="json"),
             room=game_pin,
         )
+        await _emit_progress(sio, game_pin, state, [])
 
     @sio.event
     async def set_activity_phase(sid: str, data: dict):
@@ -304,6 +351,8 @@ def register_activity_handlers(sio: AsyncServer) -> None:
             state.model_dump(mode="json"),
             room=game_pin,
         )
+        responses = await _read_responses(game_pin, payload.question_index)
+        await _emit_progress(sio, game_pin, state, responses)
 
     @sio.event
     async def submit_activity_response(sid: str, data: dict):
@@ -347,10 +396,10 @@ def register_activity_handlers(sio: AsyncServer) -> None:
             username=username,
             question_index=payload.question_index,
             phase=payload.phase,
-            choice=payload.choice.strip() if payload.choice else None,
+            choice=payload.choice,
             confidence=payload.confidence,
-            justification=payload.justification.strip() if payload.justification else None,
-            reflection=payload.reflection.strip() if payload.reflection else None,
+            justification=payload.justification,
+            reflection=payload.reflection,
             submitted_at=datetime.now(),
         )
         await redis.hset(responses_key, field, response.model_dump_json())
@@ -363,18 +412,7 @@ def register_activity_handlers(sio: AsyncServer) -> None:
         )
 
         all_responses = await _read_responses(game_pin, payload.question_index)
-        phase_count = sum(1 for item in all_responses if item.phase == payload.phase)
-        player_count = await redis.scard(f"game_session:{game_pin}:players")
-        await sio.emit(
-            "activity_progress",
-            {
-                "question_index": payload.question_index,
-                "phase": payload.phase.value,
-                "response_count": phase_count,
-                "player_count": player_count,
-            },
-            room=f"admin:{game_pin}",
-        )
+        await _emit_progress(sio, game_pin, state, all_responses)
 
     @sio.event
     async def get_activity_state(sid: str, data: dict):
@@ -387,21 +425,31 @@ def register_activity_handlers(sio: AsyncServer) -> None:
         session = await get_session(sid, sio)
         game_pin = session["game_pin"]
         state = await _load_state(game_pin, payload.question_index)
+        responses = await _read_responses(game_pin, payload.question_index)
+        player_count = await _player_count(game_pin)
 
         submitted_phases: list[str] = []
+        own_responses: dict[str, dict] = {}
         if not session.get("admin") and state is not None:
-            responses = await _read_responses(game_pin, payload.question_index)
+            username = session.get("username")
             submitted_phases = [
                 response.phase.value
                 for response in responses
-                if response.username == session.get("username")
+                if response.username == username
             ]
+            own_responses = _own_response_snapshot(responses, username)
 
         await sio.emit(
             "activity_state",
             {
                 "state": state.model_dump(mode="json") if state else None,
                 "submitted_phases": submitted_phases,
+                "my_responses": own_responses,
+                "response_count": (
+                    _phase_response_count(responses, state.phase) if state is not None else 0
+                ),
+                "player_count": player_count,
+                "n3_mode": player_count == 3,
             },
             room=sid,
         )
@@ -427,10 +475,13 @@ def register_activity_handlers(sio: AsyncServer) -> None:
             return
 
         responses = await _read_responses(game_pin, payload.question_index)
+        player_count = await _player_count(game_pin)
         await sio.emit(
             "activity_results",
             {
                 "question_index": payload.question_index,
+                "player_count": player_count,
+                "n3_mode": player_count == 3,
                 **build_activity_results(responses),
             },
             room=sid,

@@ -67,11 +67,15 @@ def test_submission_normalizes_text_before_validation():
     assert payload.justification == "La supervisión humana reduce el riesgo."
 
 
-def test_blank_text_is_rejected_after_normalization():
+@pytest.mark.parametrize(
+    "phase",
+    [ActivityPhase.INITIAL_RESPONSE, ActivityPhase.SECOND_RESPONSE],
+)
+def test_blank_response_text_is_rejected_after_normalization(phase):
     with pytest.raises(ValidationError):
         SubmitActivityResponseData(
             question_index=0,
-            phase=ActivityPhase.INITIAL_RESPONSE,
+            phase=phase,
             choice="   ",
             confidence=3,
             justification="argumento",
@@ -80,7 +84,7 @@ def test_blank_text_is_rejected_after_normalization():
     with pytest.raises(ValidationError):
         SubmitActivityResponseData(
             question_index=0,
-            phase=ActivityPhase.INITIAL_RESPONSE,
+            phase=phase,
             choice="A",
             confidence=3,
             justification="   ",
@@ -95,6 +99,7 @@ def test_stored_response_enforces_same_phase_contract_as_submission():
             phase=ActivityPhase.DISCUSSION,
             choice="A",
             confidence=3,
+            justification="Argumento",
             submitted_at=datetime(2026, 9, 17, 12, 0, 0),
         )
 
@@ -104,6 +109,7 @@ def test_stored_response_enforces_same_phase_contract_as_submission():
             question_index=0,
             phase=ActivityPhase.SECOND_RESPONSE,
             choice="A",
+            confidence=3,
             submitted_at=datetime(2026, 9, 17, 12, 0, 0),
         )
 
@@ -115,10 +121,12 @@ def test_stored_response_normalizes_identity_and_text():
         phase=ActivityPhase.SECOND_RESPONSE,
         choice="  B ",
         confidence=4,
+        justification="  Razon revisada  ",
         submitted_at=datetime(2026, 9, 17, 12, 0, 0),
     )
     assert response.username == "alice"
     assert response.choice == "B"
+    assert response.justification == "Razon revisada"
 
 
 def test_redis_keys_separate_state_from_responses_and_rounds_by_field():

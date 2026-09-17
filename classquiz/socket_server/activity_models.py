@@ -91,9 +91,8 @@ def _validate_response_payload(
             raise ValueError("choice is required for response phases")
         if confidence is None:
             raise ValueError("confidence is required for response phases")
-
-    if phase == ActivityPhase.INITIAL_RESPONSE and justification is None:
-        raise ValueError("justification is required for the initial response")
+        if justification is None:
+            raise ValueError("justification is required for response phases")
 
     if phase == ActivityPhase.REFLECTION and reflection is None:
         raise ValueError("reflection is required for the reflection phase")

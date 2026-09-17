@@ -45,15 +45,25 @@ def test_initial_response_requires_choice_confidence_and_justification():
         )
 
 
-def test_second_response_does_not_require_initial_justification_again():
+def test_second_response_requires_choice_confidence_and_justification():
+    with pytest.raises(ValidationError):
+        SubmitActivityResponseData(
+            question_index=0,
+            phase=ActivityPhase.SECOND_RESPONSE,
+            choice="B",
+            confidence=4,
+        )
+
     data = SubmitActivityResponseData(
         question_index=0,
         phase=ActivityPhase.SECOND_RESPONSE,
         choice="B",
         confidence=4,
+        justification="Mantengo esta alternativa por la evidencia discutida.",
     )
     assert data.choice == "B"
     assert data.confidence == 4
+    assert data.justification == "Mantengo esta alternativa por la evidencia discutida."
 
 
 def test_reflection_requires_reflection_text():
@@ -71,18 +81,23 @@ def test_non_response_phases_reject_participant_submission():
             phase=ActivityPhase.DISCUSSION,
             choice="A",
             confidence=3,
+            justification="Argumento",
         )
 
 
-def test_activity_results_are_descriptive_and_neutral():
+def test_activity_results_are_descriptive_neutral_and_anonymous():
     responses = [
         _response("alice", ActivityPhase.INITIAL_RESPONSE, "A", 3, "Argument A"),
         _response("bob", ActivityPhase.INITIAL_RESPONSE, "A", 3, "Otro argumento"),
         _response("carol", ActivityPhase.INITIAL_RESPONSE, "B", 5, "Argument B"),
-        _response("alice", ActivityPhase.SECOND_RESPONSE, "A", 4),
-        _response("bob", ActivityPhase.SECOND_RESPONSE, "B", 4),
-        _response("carol", ActivityPhase.SECOND_RESPONSE, "A", 4),
-        _response("alice", ActivityPhase.REFLECTION, reflection="Escuche una objecion util"),
+        _response("alice", ActivityPhase.SECOND_RESPONSE, "A", 4, "Razon R2 A"),
+        _response("bob", ActivityPhase.SECOND_RESPONSE, "B", 4, "Razon R2 B"),
+        _response("carol", ActivityPhase.SECOND_RESPONSE, "A", 4, "Razon R2 A"),
+        _response(
+            "alice",
+            ActivityPhase.REFLECTION,
+            reflection="Escuche una objecion util",
+        ),
     ]
 
     results = build_activity_results(responses)
@@ -91,7 +106,7 @@ def test_activity_results_are_descriptive_and_neutral():
     assert results["second_counts"] == {"A": 2, "B": 1}
     assert results["transitions"] == {
         "A": {"A": 1, "B": 1},
-        "B": {"A": 1},
+        "B": {"A": 1, "B": 0},
     }
     assert results["stance"] == {"maintained": 1, "changed": 2}
     assert results["confidence_change"] == {
@@ -100,6 +115,12 @@ def test_activity_results_are_descriptive_and_neutral():
         "unchanged": 0,
     }
     assert results["matched_participants"] == 3
+    assert results["reflection_count"] == 1
+    assert "justifications" not in results
+    assert "reflections" not in results
+    assert "alice" not in str(results)
+    assert "bob" not in str(results)
+    assert "carol" not in str(results)
     assert "success" not in results
     assert "correct" not in results
 
@@ -108,10 +129,14 @@ def test_unmatched_participant_is_not_counted_as_changed_or_maintained():
     responses = [
         _response("alice", ActivityPhase.INITIAL_RESPONSE, "A", 3, "Argument"),
         _response("bob", ActivityPhase.INITIAL_RESPONSE, "B", 4, "Argument"),
-        _response("alice", ActivityPhase.SECOND_RESPONSE, "B", 4),
+        _response("alice", ActivityPhase.SECOND_RESPONSE, "B", 4, "Razon R2"),
     ]
 
     results = build_activity_results(responses)
 
     assert results["matched_participants"] == 1
     assert results["stance"] == {"maintained": 0, "changed": 1}
+    assert results["transitions"] == {
+        "A": {"A": 0, "B": 1},
+        "B": {"A": 0, "B": 0},
+    }
