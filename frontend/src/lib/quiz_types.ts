@@ -37,6 +37,8 @@ export enum QuizQuestionType {
 	CHECK = 'CHECK' // eslint-disable-line no-unused-vars
 }
 
+export type QuestionInteractionMode = 'PEER_DELIBERATION';
+
 export interface RangeQuizAnswer {
 	min: number;
 	max: number;
@@ -62,6 +64,7 @@ export interface Question {
 	image?: string;
 	answers: Answers;
 	hide_results?: boolean;
+	interaction_mode?: QuestionInteractionMode;
 }
 
 export type Answers =
