@@ -11,6 +11,7 @@ SPDX-License-Identifier: MPL-2.0
 	import { SocketGameControls } from '$lib/play/admin/socket_game_controls.ts';
 	import {
 		ActivityPhase,
+		FacilitationMode,
 		type ActivityProgress,
 		type ActivityResults,
 		type ActivityState,
@@ -28,9 +29,12 @@ SPDX-License-Identifier: MPL-2.0
 	let progress: ActivityProgress | null = $state(null);
 	let results: ActivityResults | null = $state(null);
 	let player_count = $state(0);
-	let n3_mode = $state(false);
+	let facilitation_mode = $state(FacilitationMode.WAITING);
 	let error = $state('');
 	let discussion_seconds = $state(120);
+
+	const isMicrogroup = $derived(facilitation_mode === FacilitationMode.MICROGROUP);
+	const isClassroom = $derived(facilitation_mode === FacilitationMode.CLASSROOM);
 
 	const requestSnapshot = () => {
 		socket_game_controls.get_activity_state(question_index);
@@ -42,13 +46,13 @@ SPDX-License-Identifier: MPL-2.0
 			if (!data.state || data.state.question_index !== question_index) return;
 			state = data.state;
 			player_count = data.player_count ?? 0;
-			n3_mode = data.n3_mode ?? data.player_count === 3;
+			facilitation_mode = data.facilitation_mode ?? FacilitationMode.WAITING;
 			progress = {
 				question_index,
 				phase: data.state.phase,
 				response_count: data.response_count ?? 0,
 				player_count: data.player_count ?? 0,
-				n3_mode: data.n3_mode ?? false
+				facilitation_mode: data.facilitation_mode ?? FacilitationMode.WAITING
 			};
 		};
 
@@ -63,7 +67,7 @@ SPDX-License-Identifier: MPL-2.0
 			if (data.question_index !== question_index) return;
 			progress = data;
 			player_count = data.player_count;
-			n3_mode = data.n3_mode ?? data.player_count === 3;
+			facilitation_mode = data.facilitation_mode;
 			socket_game_controls.get_activity_results(question_index);
 		};
 
@@ -71,7 +75,7 @@ SPDX-License-Identifier: MPL-2.0
 			if (data.question_index !== question_index) return;
 			results = data;
 			player_count = data.player_count;
-			n3_mode = data.n3_mode ?? data.player_count === 3;
+			facilitation_mode = data.facilitation_mode;
 		};
 
 		const onActivityError = (data: { code?: string }) => {
@@ -135,6 +139,12 @@ SPDX-License-Identifier: MPL-2.0
 		return labels[state.phase];
 	});
 
+	const facilitationLabel = $derived.by(() => {
+		if (isMicrogroup) return 'Microgrupo · 1–3 participantes';
+		if (isClassroom) return 'Aula · 4+ participantes';
+		return 'Esperando participantes';
+	});
+
 	const r1_total = $derived(
 		Object.values(results?.initial_counts ?? {}).reduce((sum, count) => sum + count, 0)
 	);
@@ -168,11 +178,9 @@ SPDX-License-Identifier: MPL-2.0
 			</p>
 			<div class="flex flex-wrap items-center gap-2">
 				<p class="font-semibold">{phaseLabel}</p>
-				{#if n3_mode}
-					<span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold dark:bg-slate-800">
-						Modo N=3
-					</span>
-				{/if}
+				<span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold dark:bg-slate-800">
+					{facilitationLabel}
+				</span>
 			</div>
 		</div>
 
@@ -266,23 +274,32 @@ SPDX-License-Identifier: MPL-2.0
 			</div>
 		</div>
 
-		{#if n3_mode && state.phase === ActivityPhase.DISCUSSION}
+		{#if isMicrogroup && state.phase === ActivityPhase.DISCUSSION}
 			<section class="mt-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
-				<p class="text-sm font-semibold uppercase tracking-wide text-slate-500">Modo N=3 · facilitación de tríada</p>
+				<p class="text-sm font-semibold uppercase tracking-wide text-slate-500">Facilitación adaptativa · microgrupo</p>
 				<div class="mt-3 grid gap-3 md:grid-cols-3">
 					<div class="rounded-xl bg-slate-100 p-4 dark:bg-slate-800">
 						<p class="font-semibold">1 · Exposición</p>
-						<p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Cada estudiante presenta su razón principal sin interrupciones.</p>
+						<p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Cada participante presenta su razón principal sin interrupciones.</p>
 					</div>
 					<div class="rounded-xl bg-slate-100 p-4 dark:bg-slate-800">
 						<p class="font-semibold">2 · Contraste</p>
-						<p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Cada estudiante pregunta o responde a un argumento ajeno.</p>
+						<p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Cuando haya más de una persona, se pregunta o responde a un argumento ajeno.</p>
 					</div>
 					<div class="rounded-xl bg-slate-100 p-4 dark:bg-slate-800">
 						<p class="font-semibold">3 · Preparación R2</p>
-						<p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Cada estudiante identifica razones que mantiene o revisa.</p>
+						<p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Cada participante identifica razones que mantiene o revisa.</p>
 					</div>
 				</div>
+			</section>
+		{/if}
+
+		{#if isClassroom && state.phase === ActivityPhase.DISCUSSION}
+			<section class="mt-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
+				<p class="text-sm font-semibold uppercase tracking-wide text-slate-500">Facilitación adaptativa · aula</p>
+				<p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
+					La actividad mantiene el flujo de clase y no aplica el protocolo acotado de microgrupo. La formación automática de pares o subgrupos puede incorporarse como una capa posterior.
+				</p>
 			</section>
 		{/if}
 
